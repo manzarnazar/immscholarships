@@ -94,9 +94,9 @@ class ScholarshipsController extends Controller
    public function all(Request $request, $type = null)
     {
    
-        // if (!in_array($type, ['language', 'bachelor', 'masters'])) {
-        //     return redirect()->route('home')->withErrors(['message' => 'Invalid scholarship type.']);
-        // }
+        if (!in_array($type, ['language', 'bachelor', 'masters'])) {
+            return redirect()->route('home')->withErrors(['message' => 'Invalid scholarship type.']);
+        }
 
         $search = $request->get('search', '');
         $entriesPerPage = $request->get('entriesPerPage', 10);
@@ -120,8 +120,13 @@ class ScholarshipsController extends Controller
                     });
             });
         }
-
-        $scholarships = $query->orderBy('created_at', 'desc')->paginate($entriesPerPage);
+        try {
+            $scholarships = $query->orderBy('created_at', 'desc')->paginate($entriesPerPage);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching scholarships: ' . $e->getMessage());
+            return response()->json(['error' => 'Server error'], 500);
+        }
+        // $scholarships = $query->orderBy('created_at', 'desc')->paginate($entriesPerPage);
 
 
          // If the request is expecting JSON (e.g., AJAX call), return only the data part
