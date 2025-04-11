@@ -4,7 +4,7 @@
          <td> <?php $institution = \App\Models\Institutions::where('id', $scholarship->institution_id)->first(); 
                  $country = \App\Models\Countries::where('id', $institution->country)->first();
          ?>
-                                            {{$country->name}}
+                                            {{$country ? $country->name : ""}}
                                             </td>
           <td>{{ strtoupper($institution->city) }}</td>
         <td>
