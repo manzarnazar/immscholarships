@@ -105,7 +105,7 @@ class ScholarshipsController extends Controller
             $type = 'language program';
         }
        
-        $query = Scholarships::whereHas('institutions', function ($query) use ($type) {
+        $query = Scholarships::whereHas('institution', function ($query) use ($type) {
             $query->where('education_level', $type);
         });
 
