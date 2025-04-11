@@ -91,57 +91,54 @@ class ScholarshipsController extends Controller
 }
 
 
-   public function all(Request $request, $type = null)
-    {
-   
-        // if (!in_array($type, ['language', 'bachelor', 'masters'])) {
-        //     return redirect()->route('home')->withErrors(['message' => 'Invalid scholarship type.']);
-        // }
+public function all(Request $request, $type = null)
+{
+    $search = $request->get('search', '');
+    $entriesPerPage = $request->get('entriesPerPage', 10);
 
-        $search = $request->get('search', '');
-        $entriesPerPage = $request->get('entriesPerPage', 10);
-
-        if ($type == 'language') {
-            $type = 'language program';
-        }
-       
-        $query = Scholarships::whereHas('institution', function ($query) use ($type) {
-            $query->where('education_level', $type);
-        });
-
-        $query->where('status', 'AVAILABLE');
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'LIKE', "%{$search}%")
-                    ->orWhere('teaching_language', 'LIKE', "%{$search}%")
-                    ->orWhereHas('institution', function ($query) use ($search) {
-                        $query->where('name', 'LIKE', "%{$search}%")
-                            ->orWhere('code', 'LIKE', "%{$search}%");
-                    });
-            });
-        }
-
-        $scholarships = $query->orderBy('created_at', 'desc')->paginate($entriesPerPage);
-
-
-         // If the request is expecting JSON (e.g., AJAX call), return only the data part
-         if ($request->ajax()) {
-            // Render the table data HTML and pagination HTML
-            $html = view('scholarships.all_data', compact('scholarships'))->render();
-            $pagination = view('layout.components.pagination', ['paginator' => $scholarships])->render();
-
-            // Return the rendered HTML as a JSON response
-            return response()->json([
-                'data' => $html,
-                'pagination' => $pagination,
-                'from' => $scholarships->firstItem(),
-                'to' => $scholarships->lastItem(),
-                'total' => $scholarships->total()
-            ]);
-        }
-       
-        return view('scholarships.all_new', compact('scholarships', 'type', 'search', 'entriesPerPage'));
+    // Map the URL parameter to the actual education_level values if needed
+    if ($type == 'language') {
+        $type = 'language program';
     }
+    // Add other mappings if necessary
+    // elseif ($type == 'bachelor') {
+    //     $type = 'undergraduate';
+    // }
+
+    $query = Scholarships::whereHas('institution', function ($query) use ($type) {
+        $query->where('education_level', $type);
+    });
+
+    $query->where('status', 'AVAILABLE');
+    
+    if ($search) {
+        $query->where(function ($q) use ($search) {
+            $q->where('title', 'LIKE', "%{$search}%")
+                ->orWhere('teaching_language', 'LIKE', "%{$search}%")
+                ->orWhereHas('institution', function ($query) use ($search) {
+                    $query->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('code', 'LIKE', "%{$search}%");
+                });
+        });
+    }
+
+    $scholarships = $query->orderBy('created_at', 'desc')->paginate($entriesPerPage);
+
+    if ($request->ajax()) {
+        $html = view('scholarships.all_data', compact('scholarships'))->render();
+        $pagination = view('layout.components.pagination', ['paginator' => $scholarships])->render();
+
+        return response()->json([
+            'data' => $html,
+            'pagination' => $pagination,
+            'from' => $scholarships->firstItem(),
+            'to' => $scholarships->lastItem(),
+            'total' => $scholarships->total()
+        ]);
+    }
+   
+    return view('scholarships.all_new', compact('scholarships', 'type', 'search', 'entriesPerPage'));
+}
 
 
 
