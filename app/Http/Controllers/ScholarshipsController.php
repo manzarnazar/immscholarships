@@ -91,42 +91,25 @@ class ScholarshipsController extends Controller
 }
 
 
-public function all(Request $request, $type = null)
-{
-    // Validate scholarship type
-    if (!in_array($type, ['language', 'bachelor', 'masters'])) {
-        if ($request->ajax()) {
-            return response()->json(['error' => 'Invalid scholarship type'], 400);
-        }
-        return redirect()->route('home')->withErrors(['message' => 'Invalid scholarship type.']);
-    }
+   public function all(Request $request, $type = null)
+    {
+   
+        // if (!in_array($type, ['language', 'bachelor', 'masters'])) {
+        //     return redirect()->route('home')->withErrors(['message' => 'Invalid scholarship type.']);
+        // }
 
-    try {
         $search = $request->get('search', '');
         $entriesPerPage = $request->get('entriesPerPage', 10);
 
-        // Map type to database values if needed
-        $dbEducationLevel = $type;
         if ($type == 'language') {
-            $dbEducationLevel = 'language program';
+            $type = 'language program';
         }
-        // Add similar mappings if needed for other types
-        // elseif ($type == 'bachelor') {
-        //     $dbEducationLevel = 'undergraduate';
-        // }
+       
+        $query = Scholarships::whereHas('institutions', function ($query) use ($type) {
+            $query->where('education_level', $type);
+        });
 
-        \Log::debug("Fetching scholarships for type: {$type} (DB value: {$dbEducationLevel})");
-
-        // Build the query with eager loading
-        $query = Scholarships::with(['institution' => function($query) {
-                $query->select('id', 'name', 'code', 'education_level');
-            }])
-            ->whereHas('institution', function ($query) use ($dbEducationLevel) {
-                $query->where('education_level', $dbEducationLevel);
-            })
-            ->where('status', 'AVAILABLE');
-
-        // Apply search filters
+        $query->where('status', 'AVAILABLE');
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'LIKE', "%{$search}%")
@@ -138,50 +121,27 @@ public function all(Request $request, $type = null)
             });
         }
 
-        // Execute query with pagination
         $scholarships = $query->orderBy('created_at', 'desc')->paginate($entriesPerPage);
 
-        \Log::debug("Found {$scholarships->total()} scholarships matching criteria");
 
-        // AJAX response
-        if ($request->ajax()) {
-            try {
-                $html = view('scholarships.all_data', compact('scholarships'))->render();
-                $pagination = view('layout.components.pagination', ['paginator' => $scholarships])->render();
+         // If the request is expecting JSON (e.g., AJAX call), return only the data part
+         if ($request->ajax()) {
+            // Render the table data HTML and pagination HTML
+            $html = view('scholarships.all_data', compact('scholarships'))->render();
+            $pagination = view('layout.components.pagination', ['paginator' => $scholarships])->render();
 
-                return response()->json([
-                    'success' => true,
-                    'data' => $html,
-                    'pagination' => $pagination,
-                    'from' => $scholarships->firstItem(),
-                    'to' => $scholarships->lastItem(),
-                    'total' => $scholarships->total()
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('View rendering error: ' . $e->getMessage());
-                return response()->json([
-                    'error' => 'Error rendering view',
-                    'details' => $e->getMessage()
-                ], 500);
-            }
-        }
-
-        // Regular HTTP response
-        return view('scholarships.all_new', compact('scholarships', 'type', 'search', 'entriesPerPage'));
-
-    } catch (\Exception $e) {
-        \Log::error('ScholarshipsController error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-        
-        if ($request->ajax()) {
+            // Return the rendered HTML as a JSON response
             return response()->json([
-                'error' => 'Server error',
-                'details' => $e->getMessage()
-            ], 500);
+                'data' => $html,
+                'pagination' => $pagination,
+                'from' => $scholarships->firstItem(),
+                'to' => $scholarships->lastItem(),
+                'total' => $scholarships->total()
+            ]);
         }
-        
-        return redirect()->back()->with('error', 'An error occurred while fetching scholarships');
+       
+        return view('scholarships.all_new', compact('scholarships', 'type', 'search', 'entriesPerPage'));
     }
-}
 
 
 
